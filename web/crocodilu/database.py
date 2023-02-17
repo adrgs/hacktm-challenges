@@ -18,6 +18,10 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
+    active = db.Column(db.Boolean, default=False)
+    admin = db.Column(db.Boolean, default=False)
+    code = db.Column(db.String(4), nullable=True)
+    posts = db.relationship('Post', backref='author', lazy=True)
 
     def set_password(self, password: str) -> None:
         self.password = generate_password_hash(password)

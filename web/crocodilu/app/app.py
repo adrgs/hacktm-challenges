@@ -14,10 +14,10 @@ import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///crocodilu.db'
-app.config['SECRET_KEY'] = b'asdfjklasdfjskalfjsdkl'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'supersecretflaskkey')
 
-app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcXP5EkAAAAABoW5y1BfnEuG4cHxGBBRBoiKuCk'
-app.config['RECAPTCHA_PRIVATE_KEY'] = '6LcXP5EkAAAAAEtV-lBWW-5f8IV0_wyQh_z2CMp9'
+app.config['RECAPTCHA_PUBLIC_KEY'] = os.getenv('RECAPTCHA_PUBLIC_KEY', '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI')
+app.config['RECAPTCHA_PRIVATE_KEY'] = os.getenv('RECAPTCHA_PRIVATE_KEY', '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe') 
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -82,6 +82,8 @@ def post(post_id):
     redis.rpush('query', f'/post/{post_id}')
     redis.incr('queued_count')
 
+    return render_template('post.html', title=post.title, post=post, form=form, error='Your report has been queued.')
+
 
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
@@ -92,7 +94,7 @@ class PostForm(FlaskForm):
 @app.route('/create_post', methods=['GET', 'POST'])
 @login_required
 def create_post():
-    blacklist = ['script', 'body', 'embed', 'object', 'base', 'link', 'meta', 'title', 'head', 'style', 'img']
+    blacklist = ['script', 'body', 'embed', 'object', 'base', 'link', 'meta', 'title', 'head', 'style', 'img', 'frame']
 
     if current_user.admin:
         return redirect(url_for('profile'))
@@ -102,6 +104,11 @@ def create_post():
         soup = BeautifulSoup(content, 'html.parser')
         for tag in blacklist:
             if soup.find(tag):
+                content = 'Invalid YouTube embed!'
+                break
+
+        for iframe in soup.find_all('iframe'):
+            if iframe.has_attr('srcdoc') or not iframe.has_attr('src') or not iframe['src'].startswith('https://www.youtube.com/'):
                 content = 'Invalid YouTube embed!'
                 break
 

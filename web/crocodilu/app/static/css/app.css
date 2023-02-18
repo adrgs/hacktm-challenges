@@ -8,7 +8,7 @@
     color: rgba(255,255,255,1);
 }
 
-h1, a {
+h1, h2, a {
     color: #cb066f;
 }
 
@@ -24,4 +24,8 @@ a:hover {
 .btn-primary:hover {
     background-color: #f40a86;
     border-color: #e90981;
+}
+
+.content {
+    margin-top: 50px;
 }

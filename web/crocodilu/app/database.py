@@ -42,7 +42,7 @@ class Post(db.Model):
                    unique=True,
                    nullable=False)
     title = db.Column(db.String(50), nullable=False)
-    content = db.Column(db.String(400), nullable=False)
+    content = db.Column(db.String(512), nullable=False)
     date_posted = db.Column(db.DateTime,
                             nullable=False,
                             default=datetime.utcnow)

@@ -18,6 +18,27 @@ let page;
 
 const crawl = async (path) => {
     try {
+        browser = await puppeteer.launch({
+            args: [
+              "--no-sandbox",
+              "--disable-background-networking",
+              "--disk-cache-dir=/dev/null",
+              "--disable-default-apps",
+              "--disable-extensions",
+              "--disable-desktop-notifications",
+              "--disable-gpu",
+              "--disable-sync",
+              "--disable-translate",
+              "--disable-dev-shm-usage",
+              "--hide-scrollbars",
+              "--metrics-recording-only",
+              "--mute-audio",
+              "--no-first-run",
+              "--safebrowsing-disable-auto-update",
+              "--window-size=1440,900",
+            ],
+        });
+
         page = await browser.newPage()
 
         await page.goto(BASE_URL + "login", {
@@ -27,7 +48,7 @@ const crawl = async (path) => {
         await page.type('input[name="email"]', USERNAME)
         await page.type('input[name="password"]', PASSWORD)
         await Promise.all([
-            page.click('input[type="submit"]'),
+            page.click('button[type="submit"]'),
             page.waitForNavigation({
                 waitUntil: "networkidle2",
                 timeout: TIMEOUT,
@@ -39,33 +60,14 @@ const crawl = async (path) => {
             timeout: TIMEOUT,
         })
         await page.close()
+
+        await browser.close()
     } catch(e) {
         console.log(`[*] error(${path}): ${e}`)
     }
 }
 
-(async () => {
-    browser = await puppeteer.launch({
-        args: [
-          "--no-sandbox",
-          "--disable-background-networking",
-          "--disk-cache-dir=/dev/null",
-          "--disable-default-apps",
-          "--disable-extensions",
-          "--disable-desktop-notifications",
-          "--disable-gpu",
-          "--disable-sync",
-          "--disable-translate",
-          "--disable-dev-shm-usage",
-          "--hide-scrollbars",
-          "--metrics-recording-only",
-          "--mute-audio",
-          "--no-first-run",
-          "--safebrowsing-disable-auto-update",
-          "--window-size=1440,900",
-        ],
-    });
-    
+(async () => {    
     while (true) {
         console.log(
             "[*] progress: ",

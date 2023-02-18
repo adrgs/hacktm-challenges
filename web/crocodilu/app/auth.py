@@ -5,6 +5,12 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 import re
 import random
 import string
+from redis import Redis
+import os
+
+redis = Redis(host=os.getenv('REDIS_HOST', 'localhost'),
+              port=int(os.getenv('REDIS_PORT', '6379')),
+              db=0)
 
 
 def is_valid_email(email: str) -> bool:
@@ -76,15 +82,15 @@ def request_code():
 
     user = User.query.filter(User.email.like(email)).first()
 
-    print(user)
     if user:
         if user.admin:
-            return render_template(
-                'request_code.html',
-                error='Admins cannot reset their password')
+            return render_template('request_code.html',
+                                   error='Admins cannot reset their password')
 
         user.code = ''.join(random.choices(string.digits, k=4))
         # TODO: send email with code, will fix this next release
+
+        db.session.commit()
 
         return redirect(url_for('reset_password'))
     else:
@@ -102,6 +108,17 @@ def reset_password():
     if not is_valid_email(email):
         return render_template('request_code.html', error='Invalid email')
 
+    reqs = redis.get(email)
+    if reqs is not None and int(reqs) > 2:
+        return render_template('reset_password.html',
+                               error='Too many requests')
+    else:
+        if reqs is None:
+            redis.set(email, '1')
+        else:
+            redis.incr(email)
+        redis.expire(email, 3600)
+
     code = request.form['code'].strip()
     if not code.isdigit():
         return render_template('reset_password.html', error='Invalid code')
@@ -109,6 +126,7 @@ def reset_password():
     password = request.form['password']
     user = User.query.filter(User.email.like(email)
                              & User.code.like(code)).first()
+
     if user and not user.admin:
         user.code = None
         user.password = generate_password_hash(password)

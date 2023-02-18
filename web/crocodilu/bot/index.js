@@ -20,6 +20,20 @@ const crawl = async (path) => {
     try {
         page = await browser.newPage()
 
+        await page.goto(BASE_URL + "login", {
+            waitUntil: "networkidle2",
+            timeout: 3000,
+        });
+        await page.type('input[name="email"]', USERNAME)
+        await page.type('input[name="password"]', PASSWORD)
+        await Promise.all([
+            page.click('input[type="submit"]'),
+            page.waitForNavigation({
+                waitUntil: "networkidle2",
+                timeout: TIMEOUT,
+            })
+        ])
+
         await page.goto(BASE_URL + path, {
             waitUntil: "networkidle2",
             timeout: TIMEOUT,
@@ -51,22 +65,6 @@ const crawl = async (path) => {
           "--window-size=1440,900",
         ],
     });
-
-    page = await browser.newPage()
-
-    await page.goto(BASE_URL + "login", {
-        waitUntil: "networkidle2",
-        timeout: 3000,
-    });
-    await page.type('input[name="username"]', USERNAME)
-    await page.type('input[name="password"]', PASSWORD)
-    await Promise.all([
-        page.click('input[type="submit"]'),
-        page.waitForNavigation({
-            waitUntil: "networkidle2",
-            timeout: TIMEOUT,
-        })
-    ])
     
     while (true) {
         console.log(

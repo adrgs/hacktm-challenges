@@ -7,6 +7,7 @@ import random
 import string
 from redis import Redis
 import os
+from flask_wtf import FlaskForm, RecaptchaField
 
 redis = Redis(host=os.getenv('REDIS_HOST', 'localhost'),
               port=int(os.getenv('REDIS_PORT', '6379')),
@@ -17,26 +18,33 @@ def is_valid_email(email: str) -> bool:
     email_pattern = re.compile(r"[0-9A-Za-z]+@[0-9A-Za-z]+\.[a-z]+")
     return email_pattern.match(email) is not None
 
+class RegisterForm(FlaskForm):
+    captcha = RecaptchaField()
 
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
 
+    form = RegisterForm()
+
     if request.method != 'POST':
-        return render_template('register.html')
+        return render_template('register.html', captcha = form.captcha)
+
+    if not form.captcha.validate(form):
+        return render_template('register.html', error='Invalid captcha', captcha = form.captcha)
 
     name = request.form['name'].strip()
     email = request.form['email'].strip().lower()
     password = request.form['password']
 
     if not name or not email or not password:
-        return render_template('register.html', error='Please fill all fields')
+        return render_template('register.html', error='Please fill all fields', captcha = form.captcha)
 
     if not is_valid_email(email):
-        return render_template('register.html', error='Invalid email')
+        return render_template('register.html', error='Invalid email', captcha = form.captcha)
 
     if User.query.filter(User.email.like(email)).first():
-        return render_template('register.html', error='Email already exists')
+        return render_template('register.html', error='Email already exists', captcha = form.captcha)
     user = User(name=name,
                 email=email,
                 password=generate_password_hash(password))

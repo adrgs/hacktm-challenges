@@ -12,6 +12,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///crocodilu.db'
 app.config['SECRET_KEY'] = os.urandom(32)
 
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcXP5EkAAAAABoW5y1BfnEuG4cHxGBBRBoiKuCk'
+app.config['RECAPTCHA_PRIVATE_KEY'] = '6LcXP5EkAAAAAEtV-lBWW-5f8IV0_wyQh_z2CMp9'
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 

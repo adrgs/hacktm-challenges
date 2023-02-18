@@ -10,6 +10,14 @@ COPY requirements.txt requirements.txt
 # install dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
 
+# change user to non-root
+RUN useradd -m crocodilu
+
+# chown /app to non-root user
+RUN chown -R crocodilu:crocodilu /app
+
+USER crocodilu
+
 # copy app files
 COPY . .
 

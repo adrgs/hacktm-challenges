@@ -36,7 +36,11 @@ class User(UserMixin, db.Model):
 class Post(db.Model):
     __tablename__ = 'posts'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(36),
+                   primary_key=True,
+                   default=lambda: str(uuid4()),
+                   unique=True,
+                   nullable=False)
     title = db.Column(db.String(50), nullable=False)
     content = db.Column(db.String(400), nullable=False)
     date_posted = db.Column(db.DateTime,

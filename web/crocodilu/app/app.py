@@ -1,16 +1,20 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, flash, request, render_template, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from database import db, User
+from database import db, User, Post
 from auth import register, login, logout, request_code, reset_password
 from redis import Redis
+from flask_wtf import FlaskForm, RecaptchaField
+from wtforms import StringField, SubmitField, TextAreaField
+from wtforms.validators import DataRequired
+from bs4 import BeautifulSoup
 
 import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///crocodilu.db'
-app.config['SECRET_KEY'] = os.urandom(32)
+app.config['SECRET_KEY'] = b'asdfjklasdfjskalfjsdkl'
 
 app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcXP5EkAAAAABoW5y1BfnEuG4cHxGBBRBoiKuCk'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LcXP5EkAAAAAEtV-lBWW-5f8IV0_wyQh_z2CMp9'
@@ -28,7 +32,6 @@ redis.set('proceeded_count', 0)
 
 with app.app_context():
     db.create_all()
-    # create admin user
     if not User.query.filter(User.email.like('admin@hacktm.ro')).first():
         user = User(name='admin',
                     email='admin@hacktm.ro',
@@ -37,6 +40,8 @@ with app.app_context():
                     active=True,
                     admin=True)
         db.session.add(user)
+        post = Post(title='Welcome to Crocodilu', content=os.getenv('FLAG', 'HackTM{example}'), author=user)
+        db.session.add(post)
         db.session.commit()
 
 
@@ -48,6 +53,66 @@ def load_user(user_id):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    posts = Post.query.filter_by(user_id=current_user.id).all()
+    return render_template('profile.html', posts=posts, user=current_user)
+
+class ReportForm(FlaskForm):
+    captcha = RecaptchaField()
+    submit = SubmitField('Report')
+
+@app.route("/post/<post_id>", methods=['GET', 'POST'])
+@login_required
+def post(post_id):
+    form = ReportForm()
+    post = Post.query.get_or_404(post_id)
+    if post.author.id != current_user.id and not current_user.admin:
+        return redirect(url_for('profile'))
+
+    if request.method != 'POST':
+        return render_template('post.html', title=post.title, post=post, form=form)
+
+    if not form.captcha.validate(form):
+        return render_template('post.html', title=post.title, post=post, form=form, error='Invalid captcha')
+
+    redis.rpush('query', f'/post/{post_id}')
+    redis.incr('queued_count')
+
+
+class PostForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
+    submit = SubmitField('Post')
+
+
+@app.route('/create_post', methods=['GET', 'POST'])
+@login_required
+def create_post():
+    blacklist = ['script', 'body', 'embed', 'object', 'base', 'link', 'meta', 'title', 'head', 'style', 'img']
+
+    if current_user.admin:
+        return redirect(url_for('profile'))
+    form = PostForm()
+    if form.validate_on_submit():
+        content = form.content.data
+        soup = BeautifulSoup(content, 'html.parser')
+        for tag in blacklist:
+            if soup.find(tag):
+                content = 'Invalid YouTube embed!'
+                break
+
+        post = Post(title=form.title.data,
+                    content=content,
+                    author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Your post has been created!', 'success')
+        return redirect(url_for('profile'))
+    return render_template('create_post.html', title='Create Post', form=form)
 
 
 app.add_url_rule('/request_code',

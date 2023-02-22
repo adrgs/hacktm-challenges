@@ -1,6 +1,6 @@
 APP_ENV=PROD
 ADMIN_PASSWORD=admin
-FLAG=HackTM{trilulilu_crocodilu_xssilu_9bc3af}
+FLAG=HackTM{pwnd_by_xsleaks_2d11eb9b}
 REDIS_HOST=redis
 REDIS_PORT=6379
 SECRET_KEY=supersecretflaskkey
